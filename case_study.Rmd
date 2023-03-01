@@ -1,0 +1,418 @@
+---
+title: "Assessing coverage of Community-based Management of Acute Malnutrition"
+subtitle: The case of Urban Montserrado and Grand Bassa, Liberia
+date: "1 March 2023"
+#output: pdf_document
+geometry: margin=2cm
+documentclass: article
+classoption: a4paper
+bibliography: bibliography.bib
+#lot: yes
+lof: yes
+link-citations: yes
+links-as-notes: no
+colorlinks: yes
+linkcolor: blue
+citecolor: blue
+urlcolor: blue
+fontsize: 12pt
+output:
+  bookdown::pdf_document2:
+  includes:
+    in_header: preamble.tex
+    before_body: before_body.tex
+  toc: true
+  toc_depth: 3
+  number_sections: true
+  highlight: tango #pygment
+  keep_tex: yes
+  fig_caption: yes
+  latex_engine: pdflatex
+  citation_package: natbib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+
+if(!require(stringr)) install.packages("stringr")
+if(!require(raster)) install.packages("raster")
+if(!require(bbw)) install.packages("bbw")
+if(!require(tidyr)) install.packages("tidyr")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(knitr)) install.packages("knitr")
+if(!require(kableExtra)) install.packages("kableExtra")
+if(!require(RColorBrewer)) install.packages("RColorBrewer")
+if(!require(rgdal)) install.packages("rgdal")
+if(!require(cowplot)) install.packages("cowplot")
+if(!require(sf)) install.packages("sf")
+if(!require(remotes)) install.packages("remotes")
+if(!require(liberia)) install_github("validmeasures/liberia")
+
+
+options(stringsAsFactors = FALSE)
+options(kableExtra.latex.load_packages = FALSE)
+
+themeSettings <- theme_bw() + 
+  theme(
+    panel.border = element_rect(size = 0.5, colour = "#85010C"),
+    panel.grid.major = element_line(linetype = 1, 
+                                    size = 0.2, 
+                                    colour = "gray90"),
+    panel.grid.minor = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(colour = "#247BA0", size = 15, hjust = 0),
+    legend.key = element_rect(linetype = 0),
+    axis.line.x = element_line(size = 1, colour = "#85010C"),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.ticks = element_line(colour = "#85010C", size = 0.5)
+  )
+
+themeMapping <- theme_bw() + 
+  theme(
+    panel.border = element_rect(size = 0.5, colour = "#85010C"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.background = element_blank(),
+    strip.text.x = element_text(colour = "#247BA0", size = 12, hjust = 0),
+    strip.text.y = element_text(colour = "#247BA0", size = 15, hjust = 0),
+    legend.key = element_rect(linetype = 0),
+    legend.position = "bottom",
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank()
+  )
+
+map.palette <- colorRampPalette(colors = brewer.pal(n = 7, name = "RdYlGn"), 
+                                space = "Lab")
+cmamBaseGM   <- readOGR(dsn = "data/coveragePolyGM", layer = "coveragePolyGM")
+cmamBaseGB   <- readOGR(dsn = "data/coveragePolyGB", layer = "coveragePolyGB")
+
+load("data/cmamEst.rda")
+load("data/gmHexGrid.rda")
+load("data/gbHexGrid.rda")
+load("data/cmamInt.rda")
+load("data/cmamDF.rda")
+
+gmCovHex <- gmHexGrid
+gmCovHex@data <- data.frame(gmCovHex@data, cmamInt[[1]])
+gbCovHex <- gbHexGrid
+gbCovHex@data <- data.frame(gbCovHex@data, cmamInt[[2]])
+```
+
+\newpage
+
+# Introduction
+
+One of the most important elements behind the success of the **Community-Based Management of Acute Malnutrition (CMAM)** model of service delivery is its proven capacity for achieving and sustaining high levels of coverage over wide areas.
+
+Two-stage cluster sampled surveys have been used to estimate the coverage of selective feeding programs. This approach suffers from several important limitations. A new survey method for estimating the coverage of selective feeding programs. This survey method, known as the **Centric Systematic Area Sampling (CSAS)** method, uses a combination of stratified and systematic area sampling and active and adaptive case-finding. The CSAS survey method provides a rich set of information about program coverage. In particular, provides a *"headline"* estimate of overall program coverage, a map of the spatial distribution of program coverage, and a ranked list of program-specific barriers to service access and uptake. The CSAS method is, however, resource intensive. This has led to a tendency for it to be used for program evaluation rather than for day-to-day program planning and program monitoring purposes The results of CSAS surveys have, therefore, often been able to explain why a particular program failed to achieve a satisfactory level and spatial pattern of coverage, but this information has tended to arrive too late in the program cycle to institute effective remedial action.
+
+The CMAM model of service delivery is now being adopted in developmental and post-emergency settings. Programs in these settings tend to suffer from considerable resource scarcity compared to emergency-response programs implemented by non-governmental organisations (NGOs). There exists, therefore, a need for low-resource methods capable of evaluating program coverage, identifying barriers to service access and uptake, and identifying appropriate actions for improving access and program coverage.
+
+# The case of CMAM in Liberia 
+
+Inpatient **therapeutic feeding programme (TFP)** for severe acute malnutrition has been implemented in Monrovia, Liberia since 2006 primarily through direct implementation of organisations such as Accion Contra la Faim (ACF). CMAM was first introduced in the country in 2009, as a response to the high prevalence of acute malnutrition in the country. With the introduction of CMAM, efforts shifted from inpatient treatment of SAM to outpatient care, and from direct international NGO implementation to partnership and capacity-building support for local implementation partners with the ultimate aim of enabling Liberia's Ministry of Health and Social Welfare (MoHSW) to treat acute malnutrition through a national CMAM programme.
+
+In 2009, the MoHSW in collaboration with UNICEF and other partners, developed the national CMAM guidelines. The first pilot was implemented in 2010 in Bong County, one of the counties with the highest prevalence of malnutrition in Liberia. The project aimed to train health workers and community volunteers on CMAM, establish community-based management of acute malnutrition centers, and conduct outreach activities to identify and refer malnourished children to the centers. The pilot project was successful, and it led to the establishment of CMAM services in other counties.
+
+In 2011, the MoHSW and partners established the National CMAM programme to coordinate and scale up CMAM services across the country. The programme focused on training health workers and community volunteers on CMAM, establishing CMAM in existing health facilities, and conducting outreach activities to identify and refer acute malnourished children to these facilities. The programme also aimed to strengthen the health system's capacity to manage acute malnutrition, including the procurement and supply chain of therapeutic foods. It was also during this year that the first CMAM coverage assessment was conducted in Liberia.
+
+## Monrovia Semi-Quantitative Evaluation of Access and Coverage in 2011
+
+Between February to April 2011, a **Semi-Quanitative Evaluation of Access and Coverage** or **SQUEAC** was conducted to assess the coverage of the CMAM programme implemented in Monrovia. This was an important step in the overall process of the national CMAM scale-up in Liberia with the assessment aiming to provide a comprehensive picture of the factors affecting coverage while at the same time establishing a robust baseline from which to measure the future progress of the programme.
+
+The coverage assessment determined the **point coverage** of the programme to be at **24.8%** and **period coverage** at **48.6%**. 
+
+Coverage was determined to be low across the entire city, with no identifiable variations across its different communities/sub-communities. Initial assumptions about high programme coverage in areas surrounding long-running OTPs were found to be inaccurate. The decentralisation of the programme through an increase in OTP locations has contributed positively to programme uptake, but limited linkages with other health facilities in Greater Monrovia, and the limited integration of services into MoHSW structures/health facilities, has hampered access to the programme. Community awareness about the programme, however, was found to be the single most significant barrier to access, with communities showing little/no knowledge about the programme, its services, location or intended beneficiaries. RUTF stock outs and the underreporting of defaulting in the programme has also made it difficult for the programme to take remedial action when/where needed. Based on these findings, the programme stakeholders planned for the next five years to 1) move the CMAM programme towards a more profound integration into MoHSW services; 2) complement and support this integration with a robust sensitisation strategy and; 3) ensure more regular monitoring of programme activities.
+
+## Continuing CMAM national scale-up
+
+The next years saw the continued national scale-up of CMAM in Liberia with various technical and financial support from multiple national and international stakeholders. In 2017, a three-year nutrition programme was initiated in Liberia by the Ministry of Health and UNICEF aimed at tackling child undernutrition in the country. Funded by [Power of Nutrition](http://www.powerofnutrition.org) and [UNICEF UK](https://www.unicef.org.uk), the programme was implemented across 15 counties in Liberia starting up to December 2019. The overall aim of the programme was to improve the coverage of direct nutrition interventions or what is commonly termed **nutrition-specific interventions**, i.e. interventions or programmes that address the immediate determinants of foetal and child nutrition and development — adequate food and nutrient intake, feeding, care giving and parenting practices, and low burden of infectious diseases. The current programme supports the following specific key interventions: 1) *treatment of severe acute malnutrition (SAM) within the community-based management of acute malnutrition (CMAM) programme for children 6-59 months*; 2) *vitamin A supplementation for children 6-59 months*; 3) *promotion of appropriate infant and young child feeding (IYCF) practices among pregnant or lactating women*; 4) *multiple micronutrient powder (MNP) supplementation for children 6-23 months*; and, 5) *iron and folic acid (IFA) supplementation for pregnant women*.
+
+## Simple Spatial Survey Method in 2018 and 2019
+
+To assess the programme's progress towards this overall aim, two coverage assessments using the S3M method were implemented - the first at the halfway point of the programme (2018) and the second at the end (2019). Only two programme areas were selected for the assessments: *Urban Montserrado (Greater Monrovia)* district and *Grand Bassa* county.
+
+**Case-finding effectiveness** in both Greater Monrovia and Grand Bassa were assessed to be low at baseline with Greater Monrovia having a higher rate at about 31% compared to 6% in Grand Bassa. At endline, Greater Monrovia's case-finding effectiveness dropped significantly to just about 15% while Grand Bassa's case-finding effectiveness stayed about the same.
+
+**Treatment coverage** is at 55% in Greater Monrovia at baseline which is an improvement from previous coverage estimates for the area but Grand Bassa only managed to get 18% treatment coverage. At endline, treatment coverage in Greater Monrovia dropped to less than 30% while treatment coverage in Grand Bassa decreased slightly to about 13%. The drop in coverage of CMAM for Greater Monrovia is statistically significant.
+
+```{r cmam1plot, echo = FALSE, eval = TRUE, fig.cap = "CMAM coverage", fig.height = 6, fig.width = 10, fig.align = "center", fig.pos = "H"}
+coverageEst <- read.csv("data/coverageEst.csv")
+
+x <- coverageEst
+
+x <- x[x$indicator %in% c("point", "treatment"), ]
+
+varNames <- c("Case-finding effectiveness",
+              "Treatment coverage",
+              "Case-finding effectiveness",
+              "Treatment coverage")
+
+x <- data.frame(x[ , c("county", "indicator")], df = "cmamDF", varNames, x[ , c("estimate", "lcl", "ucl")])
+names(x)[2] <- "varLabel"
+x$varLabel <- c("cf", "tc", "cf", "tc")
+x$county <- ifelse(x$county == "Monrovia", "Greater Monrovia", x$county)
+x <- data.frame(round = "Baseline", x)
+
+## Endline data
+y <- cmamEst[cmamEst$varLabel %in% c("cf", "tc"), ]
+y$varNames <- rep(unique(varNames), 2)
+y <- data.frame(round = "Endline", y)
+
+## Concatenate
+cmamTable <- data.frame(rbind(x, y))
+cmamTable$county <- factor(cmamTable$county, levels = c("Greater Monrovia", "Grand Bassa"))
+cmamTable$varNames <- factor(cmamTable$varNames, levels = unique(varNames))
+ggplot(data = cmamTable, mapping = aes(x = round, y = estimate * 100)) +
+  geom_col(color = "#85010C", fill = "#85010C", width = 0.7, alpha = 0.7) +
+  facet_grid(county ~ varNames) +
+  labs(x = "", y = "%") +
+  scale_y_continuous(limits = c(0, 100),
+                     breaks = seq(from = 0, to = 100, by = 20)) +
+  themeSettings +
+  theme(strip.text.x = element_text(size = 12))
+```
+
+```{r cmamMap1, echo = FALSE, eval = TRUE, fig.cap = "Spatial distribution of CMAM coverage in Greater Monrovia", fig.width = 8, fig.height = 8, out.width = "65%", fig.align = "center", fig.pos = "H"}
+x <- cmamBaseGM
+x$county <- "Greater Monrovia"
+names(x) <- c("county", "cf", "tc")
+x@data <- data.frame(id = row.names(x), round = "Baseline", x@data)
+xGeom <- fortify(x)
+xGeom <- merge(xGeom, x@data, by = "id")
+
+y <- subset(gmCovHex, select = c(county, cf, tc))
+y$county <- "Greater Monrovia"
+y@data <- data.frame(id = row.names(y), round = "Endline", y@data)
+yGeom <- fortify(y)
+yGeom <- merge(yGeom, y@data, by = "id")
+
+xyGeom <- data.frame(rbind(xGeom, yGeom))
+xyGeom <- pivot_longer(data = xyGeom, cols = c(cf, tc), names_to = "indicator", values_to = "estimate")
+
+xyGeom$indicator <- factor(x = xyGeom$indicator,
+                            levels = c("cf", "tc"),
+                            labels = c("Case-finding effectiveness",
+                                       "Treatment coverage"))
+
+ggplot(data = xyGeom, 
+       aes(x = long, y = lat, group = group, fill = estimate)) +
+  geom_polygon() +
+  scale_fill_gradientn(name = "%",
+                       limits = c(0, 1), 
+                       breaks = seq(from = 0, to = 1, by = .2),
+                       labels = seq(from = 0, to = 100, by = 20),
+                       colours = map.palette(101)) +
+  scale_x_continuous(limits = bbox(as_Spatial(greaterMonroviaEA))[1, ], 
+                     breaks = seq(from = bbox(as_Spatial(greaterMonroviaEA))[1, 1],
+                                  to = bbox(as_Spatial(greaterMonroviaEA))[1, 2],
+                                  by = 0.01)) +
+  scale_y_continuous(limits = bbox(as_Spatial(greaterMonroviaEA))[2, ],
+                     breaks = seq(from = bbox(as_Spatial(greaterMonroviaEA))[2, 1],
+                                  to = bbox(as_Spatial(greaterMonroviaEA))[2, 2],
+                                  by = 0.01)) +
+  facet_grid(round ~ indicator) +
+  labs(x = "", y = "") +
+  themeMapping
+```
+
+```{r cmamMap2, echo = FALSE, eval = TRUE, fig.cap = "Spatial distribution of CMAM coverage in Grand Bassa", fig.width = 8, fig.height = 8, out.width = "65%", fig.align = "center", fig.pos = "H"}
+x <- cmamBaseGB
+names(x) <- c("county", "cf", "tc")
+x@data <- data.frame(id = row.names(x), round = "Baseline", x@data)
+xGeom <- fortify(x)
+xGeom <- merge(xGeom, x@data, by = "id")
+y <- subset(gbCovHex, select = c(county, cf, tc))
+y@data <- data.frame(id = row.names(y), round = "Endline", y@data)
+yGeom <- fortify(y)
+yGeom <- merge(yGeom, y@data, by = "id")
+xyGeom <- data.frame(rbind(xGeom, yGeom))
+xyGeom <- pivot_longer(data = xyGeom, cols = c(cf, tc), names_to = "indicator", values_to = "estimate")
+xyGeom$indicator <- factor(x = xyGeom$indicator,
+                            levels = c("cf", "tc"),
+                            labels = c("Case-finding effectiveness",
+                                       "Treatment coverage"))
+ggplot(data = xyGeom, 
+       aes(x = long, y = lat, group = group, fill = estimate)) +
+  geom_polygon() +
+  scale_fill_gradientn(name = "%",
+                       limits = c(0, 1), 
+                       breaks = seq(from = 0, to = 1, by = .2),
+                       labels = seq(from = 0, to = 100, by = 20),
+                       colours = map.palette(101)) +
+  scale_x_continuous(limits = bbox(as_Spatial(grandBassaEA))[1, ], 
+                     breaks = seq(from = bbox(as_Spatial(grandBassaEA))[1, 1],
+                                  to = bbox(as_Spatial(grandBassaEA))[1, 2],
+                                  by = 0.01)) +
+  scale_y_continuous(limits = bbox(as_Spatial(grandBassaEA))[2, ],
+                     breaks = seq(from = bbox(as_Spatial(grandBassaEA))[2, 1],
+                                  to = bbox(as_Spatial(grandBassaEA))[2, 2],
+                                  by = 0.01)) +
+  facet_grid(round ~ indicator) +
+  labs(x = "", y = "") +
+  themeMapping
+```
+
+```{r cmam2plot, echo = FALSE, eval = TRUE, fig.cap = "Reasons for not being in CMAM programme", fig.height = 8, fig.width = 12, fig.align = "center", fig.pos = "H"}
+barriersEst <- read.csv("data/barriersCount.csv")
+x <- barriersEst[barriersEst$indicator %in% c("q2", "q3", paste("q4a.q4", letters[1:18], sep = "")) & barriersEst$county == "Monrovia", ]
+x$indicator <- factor(x = x$indicator, 
+                      levels = c("q2", "q3", paste("q4a.q4", letters[1:18], sep = "")),
+                      labels = c("Mother/carer does not think child is too small/thin",
+                                 "Mother/carer does not know of any treatment",
+                                 "Came to health centre but was not measured",
+                                 "Too far",
+                                 "No time/too busy",
+                                 "Mother/carer is sick",
+                                 "Cannot carry more than one child",
+                                 "Feels ashamed about coming",
+                                 "Security problems",
+                                 "No one else to take care of other siblings",
+                                 "Rejected by programme",
+                                 "Other parents' children have been rejected",
+                                 "Husband refused",
+                                 "Though necessary to be enrolled in hospital first",
+                                 "Does not think programme can help children",
+                                 "Got diarrhoea from RUTF",
+                                 "Ration has worms",
+                                 "Out of stock",
+                                 "Lack of money to pay for transport",
+                                 "SAM case in SFP"))
+
+x <- x[x$count != 0, ]
+
+baselineGM <- ggplot(data = x, aes(x = reorder(indicator, -count), y = count)) +
+  geom_col(col = "#993300", fill = alpha("#993300", 0.8), width = 0.7) +
+  labs(x = "", y = "Count") +
+  scale_y_continuous(limits = c(0, 20), breaks = seq(from = 0, to = 20, by = 4)) +
+  coord_flip() +
+  themeSettings
+
+x <- colSums(cmamDF[cmamDF$cid == 1, c("q2", "q3", paste("q4", letters[1:18], sep = ""))])
+x <- data.frame(county = "Greater Monrovia", indicator = row.names(data.frame(x)), count = x)
+
+x$indicator <- factor(x = x$indicator, 
+                      levels = c("q2", "q3", paste("q4", letters[1:18], sep = "")),
+                      labels = c("Mother/carer does not think child is too small/thin",
+                                 "Mother/carer does not know of any treatment",
+                                 "Came to health centre but was not measured",
+                                 "Too far",
+                                 "No time/too busy",
+                                 "Mother/carer is sick",
+                                 "Cannot carry more than one child",
+                                 "Feels ashamed about coming",
+                                 "Security problems",
+                                 "No one else to take care of other siblings",
+                                 "Rejected by programme",
+                                 "Other parents' children have been rejected",
+                                 "Husband refused",
+                                 "Though necessary to be enrolled in hospital first",
+                                 "Does not think programme can help children",
+                                 "Got diarrhoea from RUTF",
+                                 "Ration has worms",
+                                 "Out of stock",
+                                 "Lack of money to pay for transport",
+                                 "SAM case in SFP"))
+
+x <- x[x$count != 0, ]
+
+endlineGM <- ggplot(data = x, aes(x = reorder(indicator, -count), y = count)) +
+  geom_col(col = "#993300", fill = alpha("#993300", 0.8), width = 0.7) +
+  labs(x = "", y = "Count") +
+  scale_y_continuous(limits = c(0, 20), breaks = seq(from = 0, to = 20, by = 4)) + 
+  coord_flip() +
+  themeSettings
+
+x <- barriersEst[barriersEst$indicator %in% c("q2", "q3", paste("q4a.q4", letters[1:18], sep = "")) & barriersEst$county == "Grand Bassa", ]
+x$indicator <- factor(x = x$indicator, 
+                      levels = c("q2", "q3", paste("q4a.q4", letters[1:18], sep = "")),
+                      labels = c("Mother/carer does not think child is too small/thin",
+                                 "Mother/carer does not know of any treatment",
+                                 "Came to health centre but was not measured",
+                                 "Too far",
+                                 "No time/too busy",
+                                 "Mother/carer is sick",
+                                 "Cannot carry more than one child",
+                                 "Feels ashamed about coming",
+                                 "Security problems",
+                                 "No one else to take care of other siblings",
+                                 "Rejected by programme",
+                                 "Other parents' children have been rejected",
+                                 "Husband refused",
+                                 "Though necessary to be enrolled in hospital first",
+                                 "Does not think programme can help children",
+                                 "Got diarrhoea from RUTF",
+                                 "Ration has worms",
+                                 "Out of stock",
+                                 "Lack of money to pay for transport",
+                                 "SAM case in SFP"))
+
+x <- x[x$count != 0, ]
+
+baselineGB <- ggplot(data = x, aes(x = reorder(indicator, -count), y = count)) +
+  geom_col(col = "#993300", fill = alpha("#993300", 0.8), width = 0.7) +
+  labs(x = "", y = "Count") +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(from = 0, to = 24, by = 4)) +
+  coord_flip() +
+  themeSettings
+
+x <- colSums(cmamDF[cmamDF$cid == 2, c("q2", "q3", paste("q4", letters[1:18], sep = ""))])
+x <- data.frame(county = "Grand Bassa", indicator = row.names(data.frame(x)), count = x)
+
+x$indicator <- factor(x = x$indicator, 
+                      levels = c("q2", "q3", paste("q4", letters[1:18], sep = "")),
+                      labels = c("Mother/carer does not think child is too small/thin",
+                                 "Mother/carer does not know of any treatment",
+                                 "Came to health centre but was not measured",
+                                 "Too far",
+                                 "No time/too busy",
+                                 "Mother/carer is sick",
+                                 "Cannot carry more than one child",
+                                 "Feels ashamed about coming",
+                                 "Security problems",
+                                 "No one else to take care of other siblings",
+                                 "Rejected by programme",
+                                 "Other parents' children have been rejected",
+                                 "Husband refused",
+                                 "Though necessary to be enrolled in hospital first",
+                                 "Does not think programme can help children",
+                                 "Got diarrhoea from RUTF",
+                                 "Ration has worms",
+                                 "Out of stock",
+                                 "Lack of money to pay for transport",
+                                 "SAM case in SFP"))
+
+x <- x[x$count != 0, ]
+
+endlineGB <- ggplot(data = x, aes(x = reorder(indicator, -count), y = count)) +
+  geom_col(col = "#993300", fill = alpha("#993300", 0.8), width = 0.7) +
+  labs(x = "", y = "Count") +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(from = 0, to = 24, by = 4)) + 
+  coord_flip() +
+  themeSettings
+
+plot_grid(baselineGM, endlineGM, baselineGB, endlineGB,
+          nrow = 2, ncol = 2,
+          labels = c("Baseline - Greater Monrovia", "Endline - Greater Monrovia",
+                     "Baseline - Grand Bassa", "Endline - Grand Bassa"),
+          label_size = 12, label_colour = "#247BA0", 
+          hjust = c(-1.4, -1.5, -1.85, -2),
+          vjust = 1)
+```
+
+The CMAM coverage estimates at baseline and endline indicate 1) disparity between Greater Monrovia and Grand Bassa in terms of the level and intensity of the community aspects of the programme; 2) significant drop in coverage of CMAM in Greater Monrovia given that at baseline its coverage was exemplary for an urban CMAM programme; and, 3) no significant change in coverage of CMAM in Grand Bassa with coverage still remaining unacceptably low. Comparing to previous CMAM
+coverage assessment conducted in Greater Monrovia in 2011 reveal that despite the reported 48.6% period coverage, a relatively high figure for most CMAM programmes particularly for a programme that is being implemented in an urban area, several barriers to coverage were identified the most common of which was lack of awareness of the programme, its services and intended beneficiaries. This was the same key factor elicited in the baseline (where treatment coverage was at 55%) and endline (where treatment coverage dropped to 27%) of the Liberia coverage assessment. With all these factors of screening and awareness being constant since the early stages of the CMAM programme in Liberia, a more basic reason for the significant decrease in coverage in Greater Monrovia is likely. Based on feedback by stakeholders, the CMAM programme in Greater Monrovia has been mainly implemented by government in the past year without the usual support from other stakeholders. The possible effect of this on coverage is more on the day-to-day implementation of the programme particularly with case admission and management.
+
+# The problem/challenge
+
+You are part of a multi-disciplinary team of CMAM experts who have been tasked with proposing recommendations for the next 5-year plan for the national CMAM programming in Liberia. Part of the brief is an emphasis on improving CMAM programme coverage.
+
+
+<br/>
+<br/>
